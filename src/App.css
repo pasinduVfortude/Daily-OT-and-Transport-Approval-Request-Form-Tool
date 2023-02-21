@@ -36,3 +36,20 @@
     transform: rotate(360deg);
   }
 }
+
+
+/* .inputFile{
+  height: 50px;
+  width: auto;
+  border: #282c34 3px solid;
+  
+} */
+
+.table{
+  width: 80%;
+  margin: auto
+}
+
+.table th{
+padding-left: 10px;
+} 
