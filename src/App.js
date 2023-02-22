@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import "./App.css";
 import * as XLSX from "xlsx";
+import axios from "axios";
+// import ReceivingComponent from "./ReceivingComponent"
 
 function App() {
 
@@ -9,13 +11,20 @@ function App() {
   const [date, setDate] = useState(""); 
   const [empList, setEmpList] = useState([]); //all selected employees
   const [isUploaded, setIsUploaded] = useState(false) //wheck wheather the file is uploaded or not
-
+  const [sheets, setSheets] = useState([])
+  const [selectedTeam, setSelectedTeam] = useState()
 
   //select handler for groups
   const options = ['Team-01', 'Team-02', 'Team-03', 'Team-04', 'Team-05', 'General', 'Sample Cutting', 'Sample Warehouse', 'Quality Assurance', 'Mechanic'];
-  
+  // const options = sheets;
+
   const onOptionChangeHandler = (event) => {
     setTeam(event.target.value) //sets the team
+    // setSelectedTeam(event.target.selectedIndex-1)
+    setSelectedTeam(0)
+
+    // console.log(selectedTeam)
+    // console.log(event.target.selectedIndex-1)
     // console.log("User Selected Value - ", event.target.value)
   }
 
@@ -43,16 +52,17 @@ function App() {
       fileReader.readAsArrayBuffer(file);
 
       fileReader.onload = (e) => {
+
         setIsUploaded(true)
-        const importRange = "A9:O27";
-        // ,F9:H30";
+        const importRange = "A9:O40";
         const headers = ["Employee", "EPF", "Gender", "CallingName","", "From", "To", "Transport","","","","","","","Remarks"];
         const bufferArray = e.target.result;
         const wb = XLSX.read(bufferArray, { type: "buffer" });
+        setSheets(wb.SheetNames)
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, {range: importRange, header: headers});
-        resolve(data)
-        console.log(data);
+        resolve(data);
+
       };
 
       fileReader.onerror = (error) => {
@@ -61,28 +71,55 @@ function App() {
     });
 
     promise.then((d) => {
-      setItems(d);
+        console.log("Item: "+ d[0])
+        setItems(d);
+      
+      
     });
   };
 
   //Submit data after filling the form and after filling the data, they will send to a MSFlow via http request
   const SubmitList = async (e) => {
-    console.log(empList)
-    // Trigger URL
-
+    const jsonObj = { ...Object.fromEntries(empList) };
+    e.preventDefault()
+    const post = { date, team, empList }
+    console.log(post)
+    try {
+      const res = await axios.post('https://prod-45.southeastasia.logic.azure.com:443/workflows/543c2338f6bb45a88578d57562140705/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5snvi_lEWw3EjVQ5gFqrOTnJGDip2lsubI7ehzvt8FE', post)
+      console.log(res.data)
+      alert("Submitted")
+    } catch (e) {
+      alert(e)
+    }    
   }
 
+  // const SubmitList = async (e) => {
+  //   const jsonObj = { ...Object.fromEntries(empList) };
+  //   e.preventDefault();
+  //   const post = { date, team, empList };
+  //   console.log(post);
+  //   try {
+  //     // const res = await axios.post('http://localhost:3001/users', post)
+  //     // console.log(res.data)
+  //     // Pass post as a prop to the receiving component and return it
+  //   } catch (e) {
+  //     alert(e);
+  //   }    
+  // };
+  
+  
+  
 
   return (
     <div className="App">
     
       <div>
         {/* Following div will only visible to users after excel sheet selected, date selected, and group selected */}
-        {isUploaded == true && date !== '' && team !== '' ? (
+        {isUploaded === true && date !== '' && team !== '' ? (
           <div>
             <form onSubmit={SubmitList}>
             <h1>Daily OT & Transport Approval Request Form</h1>
-            <h4>Date: 20/02/2023&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Team: </h4>
+            <h4>Date: {date}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Team: {team}</h4>
             <h3>පහත සඳහන් කාල සීමාව තුලදී අතිකාල සේවයේ යෙදීමට අපගේ කැමැත්ත ප්‍රකාශ කර සිටිමු. </h3>
             <table className="table">
               <thead>
@@ -100,10 +137,10 @@ function App() {
               </thead>
               {/* Maps employee data that comes from Items(Excelsheet data) */}
                 {items.map((d) => {
-                  var str = "…..........................................";
+                  // console.log(d)
                   //have an issue with number of rows. Need to remove unwanter rows
-                  if(true){
                     return(
+                      
                       <tr key={d.Employee}>
                         <td>{d.Employee}</td>
                         <td>{d.EPF}</td>
@@ -115,23 +152,19 @@ function App() {
                         <td>{d.Remarks}</td>
                         <td><input type="checkbox"
                               name="employees"
-                              value = {[d.Employee, d.EPF, d.Gender, d.CallingName, d.From, d.To, d.Transport, d.Remarks]}
+                              value={[...Object.entries(d)]}
                               onChange = {(e) => {UpdateEmployees(e)}}
                             />
                         </td>
                       </tr>
                     )
-                      
-                  }else{
-                    return null;
-                  }
                 }
 
                 )}
                   <tbody>
                 </tbody>
               </table>
-              <button type="submit">Submit</button>
+              <button id="SubmitBtn" type="submit"> Submit</button>
             </form>
           </div>  
         ) : (
@@ -159,7 +192,7 @@ function App() {
 
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             {/* select group */}
-            <label>Select Group</label>
+            <label>Select Group : </label>
             <select onChange={onOptionChangeHandler}>
     
              <option>Please choose one option</option>
@@ -169,15 +202,13 @@ function App() {
              </option>
               })}
             </select>
-  
-  
-  
+ 
           </div>
   
         </div>
         )}
         
-      </div>
+      </div>    
     </div>
   );
 }
