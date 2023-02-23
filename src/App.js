@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import "./App.css";
 import * as XLSX from "xlsx";
 import axios from "axios";
-// import ReceivingComponent from "./ReceivingComponent"
 
 function App() {
 
@@ -13,6 +12,23 @@ function App() {
   const [isUploaded, setIsUploaded] = useState(false) //wheck wheather the file is uploaded or not
   const [sheets, setSheets] = useState([])
   const [selectedTeam, setSelectedTeam] = useState()
+  const [formData, setFormData] = useState( 
+    {
+      date: "",
+      team: "",
+      jsonObj: [
+        {
+          Employee: "32432",
+          EPF: "048589",
+          Gender: "F",
+          CallingName: "Nalani",
+          From: "4.45pm",
+          To: "7.45pm",
+          Transport: "Ekala",
+          Remarks: "Associate"
+        }
+      ]
+    })
 
   //select handler for groups
   const options = ['Team-01', 'Team-02', 'Team-03', 'Team-04', 'Team-05', 'General', 'Sample Cutting', 'Sample Warehouse', 'Quality Assurance', 'Mechanic'];
@@ -22,10 +38,6 @@ function App() {
     setTeam(event.target.value) //sets the team
     // setSelectedTeam(event.target.selectedIndex-1)
     setSelectedTeam(0)
-
-    // console.log(selectedTeam)
-    // console.log(event.target.selectedIndex-1)
-    // console.log("User Selected Value - ", event.target.value)
   }
 
   //checks the checked check boxes and unchecked check boxes. If checked, the checked data row will be added to the array "empList" 
@@ -72,49 +84,64 @@ function App() {
 
     promise.then((d) => {
         console.log("Item: "+ d[0])
-        setItems(d);
-      
-      
+        setItems(d);      
     });
   };
 
-  //Submit data after filling the form and after filling the data, they will send to a MSFlow via http request
-  const SubmitList = async (e) => {
-    const jsonObj = { ...Object.fromEntries(empList) };
-    e.preventDefault()
-    const post = { date, team, empList }
-    console.log(post)
-    try {
-      const res = await axios.post('https://prod-45.southeastasia.logic.azure.com:443/workflows/543c2338f6bb45a88578d57562140705/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5snvi_lEWw3EjVQ5gFqrOTnJGDip2lsubI7ehzvt8FE', post)
-      console.log(res.data)
-      alert("Submitted")
-    } catch (e) {
-      alert(e)
-    }    
-  }
+const SubmitList = (event) => {
+  event.preventDefault();
+  // const jsonObj = { ...Object.fromEntries(empList) };
+  // console.log(jsonObj)
 
-  // const SubmitList = async (e) => {
-  //   const jsonObj = { ...Object.fromEntries(empList) };
-  //   e.preventDefault();
-  //   const post = { date, team, empList };
-  //   console.log(post);
-  //   try {
-  //     // const res = await axios.post('http://localhost:3001/users', post)
-  //     // console.log(res.data)
-  //     // Pass post as a prop to the receiving component and return it
-  //   } catch (e) {
-  //     alert(e);
-  //   }    
+  // setEmpList([{"Employee":"12312", "EPF":"5432", "Gender":"F","callingName":"Sama","From":"4.45pm","To":"7.45pm", "Transport":"Ekala","Remarks":"Assosiate"}]);
+  // const formData = {
+  //   team: team,
+  //   date: date,
+  //   // EmpList: empList, 
+  //   jsonObj:[{"Employee":"12312", "EPF":"5432", "Gender":"F","callingName":"Sama","From":"4.45pm","To":"7.45pm", "Transport":"Ekala","Remarks":"Assosiate"}],
   // };
-  
-  
-  
+ alert(date, team)
+  // const formData = 
+  //   {
+  //     date: date,
+  //     team: team,
+  //     jsonObj: [
+  //       {
+  //         Employee: "32432",
+  //         EPF: "048589",
+  //         Gender: "F",
+  //         CallingName: "Nalani",
+  //         From: "4.45pm",
+  //         To: "7.45pm",
+  //         Transport: "Ekala",
+  //         Remarks: "Associate"
+  //       }
+  //     ]
+  //   }
+  setFormData({...formData,date:date,team:team})
+  console.log("--------------")
+  console.log(empList)
+  console.log("------------")
+
+  console.log(JSON.stringify(formData))
+  const dataa = JSON.stringify(formData)
+  axios.post("https://prod-45.southeastasia.logic.azure.com:443/workflows/543c2338f6bb45a88578d57562140705/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5snvi_lEWw3EjVQ5gFqrOTnJGDip2lsubI7ehzvt8FE", dataa,{headers: {
+    'Content-Type': 'application/json'}
+  })
+    .then((response) => {
+      console.log(response);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
 
   return (
     <div className="App">
     
       <div>
         {/* Following div will only visible to users after excel sheet selected, date selected, and group selected */}
+        {console.log(formData)}
         {isUploaded === true && date !== '' && team !== '' ? (
           <div>
             <form onSubmit={SubmitList}>
@@ -137,10 +164,8 @@ function App() {
               </thead>
               {/* Maps employee data that comes from Items(Excelsheet data) */}
                 {items.map((d) => {
-                  // console.log(d)
-                  //have an issue with number of rows. Need to remove unwanter rows
+                  
                     return(
-                      
                       <tr key={d.Employee}>
                         <td>{d.Employee}</td>
                         <td>{d.EPF}</td>
@@ -152,14 +177,15 @@ function App() {
                         <td>{d.Remarks}</td>
                         <td><input type="checkbox"
                               name="employees"
+                              // value={[d.Employee, d.EPF, d.Gender, d.CallingName, d.From, d.To, d.Transport, d.Remarks]}
                               value={[...Object.entries(d)]}
+                              // value={{"Employee" : d.Employee, "EPF" : d.EPF, "Gender" : d.Gender, "Calling Name" : d.CallingName, "From" : d.From, "To" : d.To, "Transport" : d.Transport, "Remark" : d.Remark}}
                               onChange = {(e) => {UpdateEmployees(e)}}
                             />
-                        </td>
+                        </td>{console.log(d)}
                       </tr>
                     )
                 }
-
                 )}
                   <tbody>
                 </tbody>
@@ -175,7 +201,7 @@ function App() {
           <div>
             {/* upload file */}
             <input
-             className="inputFile"
+              className="inputFile"
               type="file"
               onChange={(e) => {
                 const file = e.target.files[0];
@@ -193,8 +219,8 @@ function App() {
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             {/* select group */}
             <label>Select Group : </label>
+
             <select onChange={onOptionChangeHandler}>
-    
              <option>Please choose one option</option>
               {options.map((option, index) => {
               return <option key={index} >
@@ -204,10 +230,8 @@ function App() {
             </select>
  
           </div>
-  
         </div>
         )}
-        
       </div>    
     </div>
   );
